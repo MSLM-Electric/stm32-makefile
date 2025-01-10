@@ -72,7 +72,7 @@ STARTUP_FILE   = stm32f303cbtx
 DEVICE_FAMILYL = $(shell echo $(DEVICE_FAMILY) | tr A-Z a-z)
 CMSIS          = Drivers/CMSIS
 CMSIS_DEVSUP   = $(CMSIS)/Device/ST/$(DEVICE_FAMILY)/
-BUILD_DIR      = build
+BUILD_DIR      = Core
 LDSCRIPT       = $(BUILD_DIR)/MAKEGENSCRIPT_FLASH.ld
 
 $(info STARTUP_FILE = $(STARTUP_FILE))
@@ -363,43 +363,7 @@ endef
 
 #***********************************************************************
 
-define PICOCOM_CONTENTS
-#!/bin/bash -e
-
-TTY_DEV_PATH=/dev/serial/by-path/
-
-function getTTYInfo() {
-  path=$${TTY_DEV_PATH}/$$1
-  ttyPath=$$(/sbin/udevadm info -q path -n $${path})
-  properties="$$(/sbin/udevadm info --query=property -p $${ttyPath})"
-  devName=$$(echo "$${properties}" | awk -F= '$$1=="DEVNAME" {print $$2}')
-  idSerial=$$(echo "$${properties}" | awk -F= '$$1=="ID_SERIAL" {print $$2}')
-  idModel=$$(echo "$${properties}" | awk -F= '$$1=="ID_MODEL_FROM_DATABASE" {print $$2}')
-}
-
-
-baud=$$(cat $(BUILD_DIR)/Src/main.c | grep 'BaudRate ' | sed 's/.*BaudRate = //' | sed 's/;//' | head -1)
-ttys=($$(ls -1 $${TTY_DEV_PATH}))
-
-if [ $${#ttys[@]} -eq 1 ]; then
-  tty=$${ttys[0]}
-else
-  for (( i=0; i<$${#ttys[@]}; i++ )); do
-    f=$${ttys[i]}
-    getTTYInfo $$f
-    echo "$$i: $$devName \"$$idSerial\" \"$$idModel\""
-  done
-  echo -n "Choose the tty: "
-  read choice
-  tty=$${ttys[$$choice]}
-fi
-
-getTTYInfo $${tty}
-
-echo "Connecting to $$devName \"$$idSerial\" \"$$idModel\" at baud $$baud"
-echo "picocom -b $$baud -f n -d 8 -y n -p 1 --echo --imap lfcrlf $$devName"
-picocom -b $$baud -f n -d 8 -y n -p 1 --echo --imap lfcrlf $$devName
-endef
+##..
 
 #***********************************************************************
 
@@ -437,35 +401,7 @@ endef
 
 #***********************************************************************
 
-define SRC_PATCH_CONTENTS
---- build/Src/main.c
-+++ build/Src/main.c
-@@ -58,6 +58,8 @@
-
- /* USER CODE BEGIN PFP */
- /* Private function prototypes -----------------------------------------------*/
-+extern void setup();
-+extern void loop();
-
- /* USER CODE END PFP */
-
-@@ -87,13 +89,14 @@
-   MX_USART1_UART_Init();
-
-   /* USER CODE BEGIN 2 */
--
-+  setup();
-   /* USER CODE END 2 */
-
-   /* Infinite loop */
-   /* USER CODE BEGIN WHILE */
-   while (1)
-   {
-+    loop();
-   /* USER CODE END WHILE */
-
-   /* USER CODE BEGIN 3 */
-endef
+##..
 
 #***********************************************************************
 
@@ -574,22 +510,7 @@ $(BUILD_DIR)/printsize.sh:
 	@echo "$$PRINTSIZE_CONTENTS" > $(BUILD_DIR)/printsize.sh
 	@chmod a+x $(BUILD_DIR)/printsize.sh
 
-$(BUILD_DIR)/picocom.sh:
-	@mkdir -p $(BUILD_DIR)
-	@echo "$$PICOCOM_CONTENTS" > $(BUILD_DIR)/picocom.sh
-	@chmod a+x $(BUILD_DIR)/picocom.sh
-
-$(BUILD_DIR)/stm32cubemxgen $(BUILD_DIR)/stm32cubemx-pinout.csv: $(STM32CUBEMX_FILE)
-	@mkdir -p $(BUILD_DIR)
-	@echo "$$STM32CUBEMX_SCRIPT_CONTENTS" > $(BUILD_DIR)/stm32cubemx.script
-	@cp $(STM32CUBEMX_FILE) $(BUILD_DIR)/stm32cubemx.ioc
-	cd $(BUILD_DIR); $(STM32CUBEMX) -q $(MAKEFILE_DIR)build/stm32cubemx.script
-	@echo "$$SRC_PATCH_CONTENTS" > $(BUILD_DIR)/src.patch
-	dos2unix $(BUILD_DIR)/Src/main.c
-	patch -N $(BUILD_DIR)/Src/main.c < $(BUILD_DIR)/src.patch
-	sed -i -- 's/FLASH_BASE[[:space:]]*[(][(]uint32_t[)]0x[0-9a-fA-F]*[)]/FLASH_BASE            ((uint32_t)$(LINK_FLASH_START))/g' $(BUILD_DIR)/Drivers/CMSIS/Device/ST/$(DEVICE_FAMILY)/Include/*
-	sed -i -- 's/DATA_EEPROM_BASE[[:space:]]*[(][(]uint32_t[)]0x[0-9a-fA-F]*[)]/DATA_EEPROM_BASE      ((uint32_t)$(LINK_DATA_EEPROM_START))/g' $(BUILD_DIR)/Drivers/CMSIS/Device/ST/$(DEVICE_FAMILY)/Include/*
-	touch $(BUILD_DIR)/stm32cubemxgen
+##..
 
 $(BUILD_DIR)/pinout-csv-to-h.sh:
 	@mkdir -p $(BUILD_DIR)
