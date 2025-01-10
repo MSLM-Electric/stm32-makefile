@@ -8,11 +8,13 @@ include project.mk
 
 MAKEFILE_DIR     ?= $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 STM32CUBEMX_FILE ?= $(shell ls *.ioc)
-DEVICE           ?= $(shell cat $(STM32CUBEMX_FILE) | grep PCC.PartNumber | awk -F= '{ print $$2 }')
+DEVICE           ?= $(shell cat $(STM32CUBEMX_FILE) | grep Mcu.UserName | awk -F= '{ print $$2 }')
 FEATURES         += $(shell cat $(STM32CUBEMX_FILE) | grep Mcu\.IP[0-9]\*= | awk -F= '{ print $$2 }' | sed 's/[0-9]*$$//g')
 
-$(info DEVICE = ${DEVICE})
-$(info    FEATURES = $(FEATURES))
+$(info MAKEFILE_DIR = $(MAKEFILE_DIR))
+$(info STM32CUBEMX_FILE = $(STM32CUBEMX_FILE))
+$(info DEVICE = $(DEVICE))
+$(info FEATURES = $(FEATURES))
 
 LINK_FLASH_START       ?= 0x08000000
 LINK_RAM_START         ?= 0x20000000
@@ -54,16 +56,27 @@ DEVICE_TYPE       = STM32F103xB
 CPU               = -mthumb -mcpu=cortex-m3
 RAM               ?= 20480
 FLASH             ?= 131072
+else ifeq ($(DEVICE), STM32F303CBTx)
+DEVICE_FAMILY     = STM32F3xx
+DEVICE_TYPE       = STM32F303xB
+CPU               = -mthumb -mcpu=cortex-m4 -mfloat-abi=hard
+RAM               = 32768
+FLASH             = 131072
+CCMRAM            = 8192
 else
 $(error Unhandled device $(DEVICE))
 endif
 
-STARTUP_FILE   ?= $(shell echo $(DEVICE_TYPE) | tr A-Z a-z)
+##STARTUP_FILE   ?= $(shell echo $(DEVICE_TYPE) | tr A-Z a-z)
+STARTUP_FILE   = stm32f303cbtx
 DEVICE_FAMILYL = $(shell echo $(DEVICE_FAMILY) | tr A-Z a-z)
 CMSIS          = Drivers/CMSIS
 CMSIS_DEVSUP   = $(CMSIS)/Device/ST/$(DEVICE_FAMILY)/
 BUILD_DIR      = build
-LDSCRIPT       = $(BUILD_DIR)/FLASH.ld
+LDSCRIPT       = $(BUILD_DIR)/MAKEGENSCRIPT_FLASH.ld
+
+$(info STARTUP_FILE = $(STARTUP_FILE))
+$(info CMSIS_DEVSUP = $(CMSIS_DEVSUP))
 
 # Add standard files to SRCS and SSRCS
 SRCS  += \
@@ -78,6 +91,9 @@ SRCS  += \
 	$(BUILD_DIR)/Drivers/$(DEVICE_FAMILY)_HAL_Driver/Src/$(DEVICE_FAMILYL)_hal_dma.c \
 	$(BUILD_DIR)/Drivers/$(DEVICE_FAMILY)_HAL_Driver/Src/$(DEVICE_FAMILYL)_hal_cortex.c
 SSRCS += $(BUILD_DIR)/$(CMSIS_DEVSUP)Source/Templates/gcc/startup_$(STARTUP_FILE).s
+
+$(info SRCS = $(SRCS))
+$(info SSRCS = $(SSRCS))
 
 # Add features source files
 ifneq (,$(findstring ADC,$(FEATURES)))
@@ -184,7 +200,7 @@ ENTRY(Reset_Handler)
 _estack = $(LINK_END_OF_RAM);    /* end of RAM */
 
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0;      /* required amount of heap  */
+_Min_Heap_Size = 0x200;      /* required amount of heap  */
 _Min_Stack_Size = 0x200; /* required amount of stack */
 
 /* Specify the memory areas */
