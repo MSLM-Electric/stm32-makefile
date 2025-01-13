@@ -1,6 +1,8 @@
+*.[oa]
+/.cproject
 build/
 Debug/
 Release/
-.cproject
-.settings/
+.script
+.elf
 f

@@ -1,5 +1,5 @@
 USER_CFLAGS = 
-SRCS = src/main.c
+SRCS = 
 SSRCS =
 
-$(info     project.mk included and USER_CFLAGS is $(USER_CFLAGS))
+$(info project.mk included and USER_CFLAGS is $(USER_CFLAGS))
